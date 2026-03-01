@@ -22,7 +22,7 @@ export default function Home() {
   const hasInput = tokenInput.trim() !== "";
   // token to send will be user input if provided, otherwise fallback to env
   const SECRET_TOKEN = hasInput ? tokenInput : envToken;
-  const API_URL = "http://localhost:3001/api/notes";
+  const API_URL = "https://securenote-1.onrender.com/api/notes";
 
   // require user to actually type something before enabling actions
   const isAuthorized = hasInput && !!SECRET_TOKEN;
