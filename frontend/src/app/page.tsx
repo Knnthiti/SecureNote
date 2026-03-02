@@ -26,7 +26,7 @@ export default function Home() {
   const hasInput = tokenInput.trim() !== "";
   // token to send will be user input if provided, otherwise fallback to env
   const SECRET_TOKEN = hasInput ? tokenInput : envToken;
-  const API_URL = "https://securenote-1.onrender.com/api/notes";
+  const API_URL = "http://localhost:3001/api/notes";
 
   // require user to actually type something before enabling actions
   const isAuthorized = hasInput && !!SECRET_TOKEN;
@@ -60,23 +60,27 @@ export default function Home() {
 
   const handleSaveConfig = async () => {
     localStorage.setItem("dataSource", dataSource);
-    if (dataSource === "pocket") {
-      localStorage.setItem("pocketToken", pocketToken);
-      // Send config to backend
-      try {
-        const res = await fetch("http://localhost:3001/api/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pocketToken }),
-        });
-        if (res.ok) {
-          setError(null);
-          fetchNotes();
-        }
-      } catch (e) {
+    localStorage.setItem("pocketToken", pocketToken);
+    
+    // Send config to backend
+    try {
+      const res = await fetch("http://localhost:3001/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          pocketToken: dataSource === "pocket" ? pocketToken : null 
+        }),
+      });
+      if (res.ok) {
+        setError(null);
+        await fetchNotes(); // Reload notes after switching
+      } else {
         setError("Failed to save config");
       }
+    } catch (e) {
+      setError("Failed to save config");
     }
+    
     setShowSettings(false);
   };
 
