@@ -55,8 +55,15 @@ async function pocketGetNotes() {
   });
   if (!res.ok) throw new Error(`PocketHost GET failed: ${res.status}`);
   const data = await res.json();
-  // PocketHost API returns { items: [...] } or just array
-  return data.items || data;
+  console.log('PocketHost response:', JSON.stringify(data).substring(0, 200));
+  
+  // Map PocketHost response to Note format
+  const items = data.items || data;
+  return Array.isArray(items) ? items.map(item => ({
+    id: item.id || item.collectionId || Math.random(),
+    title: item.title || 'Untitled',
+    content: item.content || '',
+  })) : [];
 }
 
 async function pocketCreateNote(title, content) {
