@@ -58,6 +58,13 @@ export default function Home() {
     fetchNotes();
   }, []);
 
+  // Auto-refresh when dataSource changes from Settings
+  useEffect(() => {
+    if (showSettings === false) {
+      fetchNotes();
+    }
+  }, [showSettings]);
+
   const handleSaveConfig = async () => {
     localStorage.setItem("dataSource", dataSource);
     localStorage.setItem("pocketToken", pocketToken);
