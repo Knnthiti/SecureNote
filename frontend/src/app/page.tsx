@@ -15,6 +15,7 @@ export default function Home() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // token value can now be entered by user
   const [tokenInput, setTokenInput] = useState("");
@@ -106,6 +107,12 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  // Filter notes based on search query
+  const filteredNotes = notes.filter((note) =>
+    note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    note.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -204,13 +211,28 @@ export default function Home() {
             {loading && <span className="text-sm text-gray-500">Loading...</span>}
           </div>
 
+          {/* Search Box */}
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="🔍 Search notes by title or content..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
           {notes.length === 0 && !loading ? (
             <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
               <p className="text-gray-600">No notes found. Create your first secure note!</p>
             </div>
+          ) : filteredNotes.length === 0 ? (
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
+              <p className="text-gray-600">No notes match your search query.</p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {notes.map((note) => (
+              {filteredNotes.map((note) => (
                 <div
                   key={note.id}
                   className="bg-white shadow-sm hover:shadow-md transition-shadow rounded-xl p-5 relative group"

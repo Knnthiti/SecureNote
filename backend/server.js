@@ -44,32 +44,60 @@ let nextId = 1;
 
 // PocketHost helpers (used when POCKET_HOST_TOKEN is set)
 async function pocketGetNotes() {
+  console.log('PocketHost GET:', POCKET_HOST_URL);
   const res = await fetch(POCKET_HOST_URL, {
-    headers: { Authorization: `Bearer ${POCKET_HOST_TOKEN}` },
+    method: 'GET',
+    headers: { 
+      Authorization: POCKET_HOST_TOKEN,
+      'Content-Type': 'application/json',
+    },
   });
+  if (!res.ok) throw new Error(`PocketHost GET failed: ${res.status}`);
   const data = await res.json();
-  // PocketHost API usually returns { items: [...] }
+  // PocketHost API returns { items: [...] } or just array
   return data.items || data;
 }
 
 async function pocketCreateNote(title, content) {
+  console.log('PocketHost POST:', POCKET_HOST_URL);
   const res = await fetch(POCKET_HOST_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${POCKET_HOST_TOKEN}`,
+      Authorization: POCKET_HOST_TOKEN,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ title, content }),
   });
+  if (!res.ok) throw new Error(`PocketHost POST failed: ${res.status}`);
+  return res.json();
+}
+
+async function pocketUpdateNote(id, title, content) {
+  const url = `${POCKET_HOST_URL}/${id}`;
+  console.log('PocketHost PATCH:', url);
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: POCKET_HOST_TOKEN,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title, content }),
+  });
+  if (!res.ok) throw new Error(`PocketHost PATCH failed: ${res.status}`);
   return res.json();
 }
 
 async function pocketDeleteNote(id) {
   const url = `${POCKET_HOST_URL}/${id}`;
+  console.log('PocketHost DELETE:', url);
   const res = await fetch(url, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${POCKET_HOST_TOKEN}` },
+    headers: { 
+      Authorization: POCKET_HOST_TOKEN,
+      'Content-Type': 'application/json',
+    },
   });
+  if (!res.ok) throw new Error(`PocketHost DELETE failed: ${res.status}`);
   return res.ok;
 }
 
@@ -158,18 +186,7 @@ app.patch('/api/notes/:id', checkAuth, async (req, res) => {
   }
   if (usePocket) {
     try {
-      // PocketHost supports PATCH by id
-      const url = `${POCKET_HOST_URL}/${id}`;
-      const resp = await fetch(url, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${POCKET_HOST_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ title, content }),
-      });
-      if (!resp.ok) throw new Error('PocketHost update failed');
-      const obj = await resp.json();
+      const obj = await pocketUpdateNote(id, title, content);
       return res.json(obj);
     } catch (err) {
       console.error('PocketHost PATCH error', err);
