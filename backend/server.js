@@ -10,9 +10,10 @@ const SECRET = process.env.SECRET_TOKEN;
 const fetch = global.fetch || require('node-fetch');
 
 // pocket host credentials (optional)
-const POCKET_HOST_URL = process.env.POCKET_HOST_URL || 'https://app-tracking.pockethost.io/api/collections/notes/records';
-const POCKET_HOST_TOKEN = process.env.POCKET_HOST_TOKEN;
-const usePocket = !!POCKET_HOST_TOKEN;
+let POCKET_HOST_URL = process.env.POCKET_HOST_URL || 'https://app-tracking.pockethost.io/api/collections/notes/records';
+let POCKET_HOST_TOKEN = process.env.POCKET_HOST_TOKEN;
+let usePocket = !!POCKET_HOST_TOKEN;
+let currentDataSource = POCKET_HOST_TOKEN ? 'pocket' : 'local';
 
 const app = express();
 app.use(cors());
@@ -139,6 +140,31 @@ function checkAuth(req, res, next) {
   }
   next();
 }
+
+// POST /api/config - update data source configuration
+app.post('/api/config', express.json(), async (req, res) => {
+  console.log('POST /api/config', req.body);
+  const { pocketToken } = req.body;
+  
+  if (pocketToken) {
+    POCKET_HOST_TOKEN = pocketToken;
+    usePocket = true;
+    currentDataSource = 'pocket';
+    console.log('✅ Switched to PocketHost');
+  } else {
+    POCKET_HOST_TOKEN = null;
+    usePocket = false;
+    currentDataSource = 'local';
+    console.log('✅ Switched to Local Storage');
+  }
+  
+  res.json({ success: true, dataSource: currentDataSource });
+});
+
+// GET /api/config - get current configuration
+app.get('/api/config', (req, res) => {
+  res.json({ dataSource: currentDataSource });
+});
 
 // GET /api/notes
 app.get('/api/notes', async (req, res) => {

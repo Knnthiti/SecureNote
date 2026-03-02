@@ -16,6 +16,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dataSource, setDataSource] = useState<"local" | "pocket">("local");
+  const [pocketToken, setPocketToken] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
 
   // token value can now be entered by user
   const [tokenInput, setTokenInput] = useState("");
@@ -48,8 +51,34 @@ export default function Home() {
   };
 
   useEffect(() => {
+    const savedSource = localStorage.getItem("dataSource") as "local" | "pocket" || "local";
+    const savedToken = localStorage.getItem("pocketToken") || "";
+    setDataSource(savedSource);
+    setPocketToken(savedToken);
     fetchNotes();
   }, []);
+
+  const handleSaveConfig = async () => {
+    localStorage.setItem("dataSource", dataSource);
+    if (dataSource === "pocket") {
+      localStorage.setItem("pocketToken", pocketToken);
+      // Send config to backend
+      try {
+        const res = await fetch("http://localhost:3001/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pocketToken }),
+        });
+        if (res.ok) {
+          setError(null);
+          fetchNotes();
+        }
+      } catch (e) {
+        setError("Failed to save config");
+      }
+    }
+    setShowSettings(false);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -125,19 +154,95 @@ export default function Home() {
           </div>
           <p className="text-gray-600 text-sm mt-2">🔑 Secure your notes with authentication</p>
         </div>
-        <div className="w-full md:w-64">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Authorization Token
-          </label>
-          <input
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            type="password"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            placeholder={process.env.NEXT_PUBLIC_SECRET_TOKEN ? "(using env value)" : "enter token"}
-          />
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+          <div className="w-full md:w-64">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Authorization Token
+            </label>
+            <input
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              type="password"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              placeholder={process.env.NEXT_PUBLIC_SECRET_TOKEN ? "(using env value)" : "enter token"}
+            />
+          </div>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
+            title="Settings"
+          >
+            ⚙️ Settings
+          </button>
         </div>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="mx-6 mb-6 bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Data Source Settings</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Choose Data Source
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="local"
+                    checked={dataSource === "local"}
+                    onChange={(e) => setDataSource(e.target.value as "local")}
+                  />
+                  <span>Local Storage (notes.json)</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="pocket"
+                    checked={dataSource === "pocket"}
+                    onChange={(e) => setDataSource(e.target.value as "pocket")}
+                  />
+                  <span>PocketHost API</span>
+                </label>
+              </div>
+            </div>
+
+            {dataSource === "pocket" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  PocketHost API Token
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter your PocketHost API token"
+                  value={pocketToken}
+                  onChange={(e) => setPocketToken(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-600 mt-2">
+                  📌 Get your token from PocketHost dashboard → API Keys
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveConfig}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Save Configuration
+              </button>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Alert */}
       {error && (
