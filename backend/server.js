@@ -153,14 +153,18 @@ function checkAuth(req, res, next) {
 // POST /api/config - update data source configuration
 app.post('/api/config', express.json(), async (req, res) => {
   console.log('POST /api/config', req.body);
-  const { pocketToken } = req.body;
+  const { dataSource, pocketToken } = req.body;
   
-  if (pocketToken) {
-    POCKET_HOST_TOKEN = pocketToken;
+  if (dataSource === 'pocket') {
+    // Switch to PocketHost (even without token, will use public API)
     usePocket = true;
+    if (pocketToken) {
+      POCKET_HOST_TOKEN = pocketToken;
+    }
     currentDataSource = 'pocket';
     console.log('✅ Switched to PocketHost');
   } else {
+    // Switch to Local Storage
     POCKET_HOST_TOKEN = null;
     usePocket = false;
     currentDataSource = 'local';
