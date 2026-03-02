@@ -10,14 +10,14 @@ const SECRET = process.env.SECRET_TOKEN;
 const fetch = global.fetch || require('node-fetch');
 
 // pocket host credentials (optional)
-let POCKET_HOST_URL = process.env.POCKET_HOST_URL || 'https://app-tracking.pockethost.io/api/collections/notes/records';
+let POCKET_HOST_URL = process.env.POCKET_HOST_URL || '';
 let POCKET_HOST_TOKEN = process.env.POCKET_HOST_TOKEN;
-let usePocket = !!POCKET_HOST_TOKEN;
-let currentDataSource = POCKET_HOST_TOKEN ? 'pocket' : 'local';
+let usePocket = !!POCKET_HOST_URL;  // Use PocketHost if URL is configured
+let currentDataSource = POCKET_HOST_URL ? 'pocket' : 'local';
 
 const app = express();
 app.use(cors());
-console.log('usePocket', usePocket, 'POCKET_HOST_TOKEN', POCKET_HOST_TOKEN);
+console.log('usePocket', usePocket, 'POCKET_HOST_URL', POCKET_HOST_URL);
 
 // enable raw body capture for debugging
 app.use(express.json({
@@ -46,12 +46,14 @@ let nextId = 1;
 // PocketHost helpers (used when POCKET_HOST_TOKEN is set)
 async function pocketGetNotes() {
   console.log('PocketHost GET:', POCKET_HOST_URL);
+  const headers = { 'Content-Type': 'application/json' };
+  if (POCKET_HOST_TOKEN) {
+    headers.Authorization = POCKET_HOST_TOKEN;
+  }
+  
   const res = await fetch(POCKET_HOST_URL, {
     method: 'GET',
-    headers: { 
-      Authorization: POCKET_HOST_TOKEN,
-      'Content-Type': 'application/json',
-    },
+    headers,
   });
   if (!res.ok) throw new Error(`PocketHost GET failed: ${res.status}`);
   const data = await res.json();
