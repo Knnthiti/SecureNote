@@ -1,55 +1,114 @@
-การส่ง Assignment: แอปพลิเคชัน SecureNote
 รหัสนักศึกษา: 66011390
-
-ขออนุญาตส่ง Assignment โปรเจกต์ SecureNote Application ครับ
-ระบบพัฒนาตาม Full-stack Architecture ที่กำหนด และรองรับการจัดเก็บข้อมูลแบบผสม (Local File + PocketHost API) เรียบร้อยแล้ว
-
-1) ที่เก็บซอร์สโค้ด
+โปรเจกต์: SecureNote Application
 GitHub: https://github.com/Knnthiti/SecureNote
 
-2) เทคโนโลยีที่ใช้
-- ฝั่งหน้าบ้าน (Frontend): Next.js (App Router) + React + Tailwind CSS
-- ฝั่งหลังบ้าน (Backend): Node.js + Express
-- แหล่งข้อมูล:
-  - โหมดโลคัล: notes.json (โมดูล fs)
-  - โหมด PocketHost: https://app-tracking.pockethost.io/api/collections/notes/records
+==================================================
+1. ภาพรวมของระบบ
+==================================================
+SecureNote เป็นแอปพลิเคชัน Full-stack สำหรับจัดการโน็ตส่วนตัว
+ผู้ใช้ต้องกรอก Authorization Token ก่อนจึงจะสามารถสร้าง แก้ไข หรือลบโน็ตได้
+รองรับการจัดเก็บข้อมูล 2 แบบ สลับได้ทันทีผ่าน UI โดยไม่ต้อง Reload
 
-3) ฟีเจอร์ที่พัฒนา
-- ตรวจสอบ Authorization Token
-- จัดการโน็ต: สร้าง / อ่าน / แก้ไข / ลบ (CRUD)
-- ค้นหาโน็ต (ตามชื่อเรื่อง/เนื้อหา)
-- สลับแหล่งข้อมูล: Local Storage / PocketHost API
-- Backend รองรับรูปแบบ Bearer Authorization สำหรับ PocketHost
-- Backend รองรับการส่ง user_id อัตโนมัติตาม Schema ของ PocketHost
+==================================================
+2. เทคโนโลยีที่ใช้
+==================================================
+Frontend : Next.js 14 (App Router) + React + Tailwind CSS
+Backend  : Node.js + Express (port 3001)
+Local DB : backend/notes.json (อ่าน/เขียนด้วย Node.js fs module)
+Cloud DB : PocketHost REST API
+           URL: https://app-tracking.pockethost.io/api/collections/notes/records
 
-4) วิธีรันในเครื่อง
-ฝั่งหลังบ้าน (Backend)
-- cd backend
-- npm install
-- ตั้งค่าตัวแปรใน .env:
-  PORT=3001
-  SECRET_TOKEN=admin123
-  POCKET_HOST_URL=https://app-tracking.pockethost.io/api/collections/notes/records
-  POCKET_HOST_TOKEN=Bearer 20260301eink
-  POCKET_HOST_USER_ID=2
-- npm start
+==================================================
+3. การทำงานของระบบ (ตาม Code จริง)
+==================================================
 
-ฝั่งหน้าบ้าน (Frontend)
-- cd frontend
-- npm install
-- ตั้งค่าตัวแปรใน .env.local:
-  NEXT_PUBLIC_SECRET_TOKEN=admin123
-- npm run dev
+--- Auth ---
+- Backend ตั้งค่า SECRET_TOKEN=admin123 ใน .env
+- ทุก Request ที่แก้ไขข้อมูล (POST/PATCH/DELETE) ต้องส่ง Header:
+    Authorization: admin123
+- Frontend มีช่อง "Authorization Token" (type=password) ที่ Header ด้านขวา
+- ระบบจะ Enable ฟอร์มก็ต่อเมื่อผู้ใช้กรอก Token ตรงกับ NEXT_PUBLIC_SECRET_TOKEN
 
-5) หมายเหตุการทดสอบ
-- ทดสอบ Backend API (GET /api/notes) ดึงโน็ตจาก PocketHost สำเร็จ
-- มีสคริปต์สำหรับสร้างโน็ตใน PocketHost:
-  backend/scripts/create-pocket-note.js
-- คำสั่ง npm:
-  npm run create:pocket-note -- "Assignment Test" "สร้างผ่าน node script" 2
+--- Data Source Switching ---
+- Backend อ่าน POCKET_HOST_URL จาก .env
+  ถ้ามีค่า → เริ่มต้น usePocket = true (ดึงข้อมูลจาก PocketHost)
+  ถ้าไม่มี → usePocket = false (ใช้ notes.json)
+- Frontend มี Radio Button "Local Storage" / "PocketHost API" แสดงทุกเวลา
+  เมื่อเลือกเปลี่ยน → เรียก POST /api/config ทันที → Backend สลับ usePocket → โหลดโน็ตใหม่
+- ค่าที่เลือกบันทึกใน localStorage ของ Browser ด้วย
 
-6) หมายเหตุเกี่ยวกับการ Deploy บนคลาวด์
-- Backend แบบ Free tier อาจมีความล่าช้าในการเริ่มต้น (Cold Start)
-- การจัดเก็บไฟล์โลคัลบน Free tier อาจถูกลบเมื่อ Restart
+--- PocketHost Auth ---
+- .env เก็บ POCKET_HOST_TOKEN=20260301eink (ไม่มี "Bearer " นำหน้า)
+- Backend มีฟังก์ชัน buildPocketHeaders() ที่ auto-prefix "Bearer " ให้อัตโนมัติ
+- ทุก Request ไป PocketHost จะส่ง Authorization: Bearer 20260301eink
+- GET /api/notes (public) ไม่ต้องใช้ Token ก็ได้ แต่ POST/PATCH/DELETE ต้องใช้
+
+--- CRUD Notes ---
+GET    /api/notes        → ดึงโน็ตทั้งหมด (ไม่ต้อง Auth)
+POST   /api/notes        → สร้างโน็ตใหม่ (ต้อง Auth)
+PATCH  /api/notes/:id    → แก้ไขโน็ต (ต้อง Auth) — ID เป็น String สำหรับ PocketHost
+DELETE /api/notes/:id    → ลบโน็ต (ต้อง Auth)
+GET    /api/config       → ดูแหล่งข้อมูลปัจจุบัน
+POST   /api/config       → เปลี่ยนแหล่งข้อมูล { dataSource, pocketToken }
+
+--- PocketHost Payload ---
+POST สร้างโน็ต ส่ง: { title, content, user_id: 2 }
+  (user_id อ่านจาก POCKET_HOST_USER_ID=2 ใน .env และ inject อัตโนมัติ)
+PATCH แก้ไข ส่ง: { title, content }
+ID ของ PocketHost เป็น String เช่น "av6str10slahwu4" (ไม่ใช่ตัวเลข)
+
+--- Search ---
+- Filter ฝั่ง Frontend ด้วย .filter() บน title และ content
+- ไม่มี Query Parameter ไป Backend
+
+==================================================
+4. โครงสร้างไฟล์สำคัญ
+==================================================
+backend/
+  server.js                      — Express server หลัก
+  notes.json                     — Local storage (1 ตัวอย่าง)
+  .env                           — PORT, SECRET_TOKEN, POCKET_HOST_*
+  scripts/create-pocket-note.js  — CLI script สำหรับสร้างโน็ตใน PocketHost
+
+frontend/
+  src/app/page.tsx               — UI ทั้งหมด (Header + Form + Note List)
+
+==================================================
+5. ค่าสภาพแวดล้อม (.env จริง)
+==================================================
+PORT=3001
+SECRET_TOKEN=admin123
+POCKET_HOST_URL=https://app-tracking.pockethost.io/api/collections/notes/records
+POCKET_HOST_TOKEN=20260301eink
+POCKET_HOST_USER_ID=2
+
+frontend/.env.local:
+NEXT_PUBLIC_SECRET_TOKEN=admin123
+
+==================================================
+6. วิธีรันในเครื่อง
+==================================================
+# Backend
+cd backend
+npm install
+npm start           → http://localhost:3001
+
+# Frontend
+cd frontend
+npm install
+npm run dev         → http://localhost:3000
+
+# CLI Script สร้างโน็ตใน PocketHost
+cd backend
+npm run create:pocket-note -- "ชื่อโน็ต" "เนื้อหา" 2
+
+==================================================
+7. การทดสอบที่ผ่านแล้ว
+==================================================
+- GET /api/notes (PocketHost mode) → คืนค่าโน็ต 4 รายการสำเร็จ
+- POST /api/notes (Local mode) → สร้างโน็ตใน notes.json สำเร็จ
+- PATCH/DELETE ด้วย String ID ของ PocketHost → สำเร็จ
+- CLI Script → สร้าง record id: vnldmzbl4ylpiwg ใน PocketHost สำเร็จ
+- สลับ Data Source ผ่าน Radio Button → โหลดข้อมูลใหม่ทันทีสำเร็จ
 
 ขอบคุณครับ
