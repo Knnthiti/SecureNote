@@ -1,106 +1,53 @@
-รหัสนักศึกษา: 66011390
-โปรเจกต์: SecureNote Application
-GitHub: https://github.com/Knnthiti/SecureNote
+ขออนุญาตส่ง Assignment โปรเจกต์ SecureNote Application ครับ โดยระบบได้รับการพัฒนาตามสถาปัตยกรรมที่กำหนด พร้อมทั้งบูรณาการส่วน Hybrid Data Persistence เป็นที่เรียบร้อยแล้วครับ
 
-==================================================
-1. โปรเจกต์นี้ทำอะไร?
-==================================================
-SecureNote คือเว็บแอปสำหรับจดโน็ตส่วนตัว
-มีระบบล็อกด้วย Token — ถ้าใส่ Token ผิด จะสร้าง/แก้ไข/ลบโน็ตไม่ได้
-สามารถเลือกเก็บโน็ตได้ 2 ที่ คือในเครื่อง (Local) หรือบนคลาวด์ (PocketHost)
-สลับได้ทันทีโดยกดปุ่ม Radio ในหน้าเว็บ
+1. ช่องทางการเข้าถึงโค้ดต้นฉบับ
+สามารถตรวจสอบโครงสร้างโค้ด เอกสาร README.md ได้ที่ GitHub Repository:
+-> https://github.com/Knnthiti/SecureNote
 
-==================================================
-2. ใช้อะไรสร้าง?
-==================================================
-- หน้าเว็บ (Frontend) : Next.js + React + Tailwind CSS
-- ฝั่ง Server (Backend): Node.js + Express รันที่ port 3001
-- เก็บข้อมูลในเครื่อง  : ไฟล์ backend/notes.json
-- เก็บข้อมูลบนคลาวด์  : PocketHost API
-  (https://app-tracking.pockethost.io/api/collections/notes/records)
+2. ช่องทางการทดสอบระบบในเครื่อง
+ระบบพัฒนาและทดสอบบนสภาวะแวดล้อมภายในเครื่อง (Frontend บน Next.js + Backend บน Express)
+-> Frontend: http://localhost:3000
+-> Backend API: http://localhost:3001
+-> System Token สำหรับทดสอบระบบ (Dynamic Authentication):
+    • ทดสอบ Local Mode (Local FS): กรอก Token admin123
+    • ทดสอบ PocketHost Mode (PocketHost API): กรอก Token admin123 แล้วสลับ Radio เป็น "PocketHost API"
+      (ระบบ Backend จะใช้ POCKET_HOST_TOKEN=20260301eink เชื่อมต่อ PocketHost โดยอัตโนมัติ)
+(หมายเหตุ: ระบบบังคับใช้การตรวจสอบสิทธิ์เสมอสำหรับการสร้าง แก้ไข และลบโน็ต แต่การอ่านโน็ต (GET) ไม่ต้องใช้ Token)
 
-==================================================
-3. ระบบทำงานอย่างไร? (อธิบายง่าย ๆ)
-==================================================
+3. สถาปัตยกรรมข้อมูลและวิธีการตรวจประเมิน
+ระบบถูกออกแบบให้รองรับการจัดเก็บข้อมูล 2 รูปแบบ ซึ่งควบคุมการสลับโหมดผ่าน Radio Button บนหน้า UI:
+-> Local Mode (Local FS): ประมวลผลและจัดเก็บข้อมูลลงไฟล์ notes.json ผ่าน Node.js fs module
+-> PocketHost Mode: ระบบ Backend จะทำหน้าที่เป็น Proxy เพื่อจัดการ Routing ไปยังฐานข้อมูล PocketHost
+    • วิธีการตรวจประเมิน PocketHost Mode: กดปุ่มสลับเป็น "PocketHost API" บนหน้าเว็บ แล้วกรอก Token admin123
+      เพื่อทดสอบฟังก์ชัน Create, Update และ Delete ได้ทันที
+      (ระบบ Backend ได้รับการตั้งค่าให้จัดการ Format ของ Authorization ด้วยการเติมคำว่า Bearer
+      และแทรกค่า user_id: 2 ลงใน Payload ให้อัตโนมัติ เพื่อให้สอดคล้องกับ Schema ของ PocketHost)
 
-[ระบบล็อก (Auth)]
-- Server มีรหัสลับ "admin123" เก็บไว้ใน .env
-- เมื่อผู้ใช้ส่งคำขอสร้าง/แก้ไข/ลบโน็ต ต้องแนบ Token นี้ไปด้วย
-- ถ้า Token ไม่ตรง → Server ปฏิเสธ (401 Unauthorized)
-- หน้าเว็บจะแสดงช่องกรอก Token มุมขวาบน และล็อก Form จนกว่าจะกรอกถูก
+4. ข้อจำกัดด้านการจัดเก็บข้อมูล
+-> Ephemeral Storage: สำหรับการทดสอบ Local Mode ข้อมูลที่ถูกเขียนลงไฟล์ notes.json
+   จะถูกเก็บไว้ตลอดเซสชัน แต่หากรีสตาร์ท Server ข้อมูลจะคงอยู่เนื่องจากอ่าน/เขียนจากไฟล์บนดิสก์
+-> Persistent Storage: PocketHost Mode จัดเก็บข้อมูลบนฐานข้อมูลคลาวด์ ข้อมูลจึงคงอยู่ถาวร
+   ไม่ขึ้นกับการรีสตาร์ท Server
 
-[สลับที่เก็บข้อมูล]
-- หน้าเว็บมีปุ่มเลือก "Local Storage" หรือ "PocketHost API"
-- เมื่อกดเลือก → ส่งคำขอไป Server ทันที → Server สลับแหล่งข้อมูล → โหลดโน็ตใหม่
-- การตั้งค่านี้จะจำไว้ใน Browser (localStorage) ด้วย
+5. ขั้นตอนการเรียกใช้งานบนเครื่องส่วนตัว
 
-[การเชื่อมต่อ PocketHost]
-- Token ของ PocketHost เก็บในไฟล์ .env ว่า "20260301eink"
-- เวลาส่งไป PocketHost จะใส่คำว่า "Bearer " นำหน้าให้อัตโนมัติ
-- การดูโน็ต (GET) ไม่ต้องใช้ Token แต่การสร้าง/แก้ไข/ลบต้องใช้
-- ID ของโน็ตใน PocketHost เป็นตัวอักษร เช่น "av6str10slahwu4"
+ส่วนที่ 1: การตั้งค่า Backend
+• เปิด Terminal และนำทางไปยังไดเรกทอรี: cd backend
+• ติดตั้ง Dependency: npm install
+• สร้างไฟล์ .env และกำหนดค่าตัวแปร:
+    -- PORT=3001
+    -- SECRET_TOKEN=admin123
+    -- POCKET_HOST_URL=https://app-tracking.pockethost.io/api/collections/notes/records
+    -- POCKET_HOST_TOKEN=20260301eink
+    -- POCKET_HOST_USER_ID=2
+• เริ่มการทำงานของเซิร์ฟเวอร์: npm start (ระบบจะทำงานบน http://localhost:3001)
 
-[การค้นหาโน็ต]
-- พิมพ์ค้นหาที่หน้าเว็บ → กรองจากชื่อและเนื้อหาทันที (ไม่ได้ไปถาม Server)
-
-==================================================
-4. API ที่มีทั้งหมด
-==================================================
-ดูโน็ต     GET    /api/notes          ไม่ต้อง Token
-สร้างโน็ต  POST   /api/notes          ต้อง Token
-แก้โน็ต    PATCH  /api/notes/:id      ต้อง Token
-ลบโน็ต    DELETE /api/notes/:id      ต้อง Token
-ดูการตั้งค่า  GET    /api/config      ไม่ต้อง Token
-เปลี่ยนการตั้งค่า  POST   /api/config  ไม่ต้อง Token
-
-==================================================
-5. ไฟล์หลักในโปรเจกต์
-==================================================
-backend/server.js                    — Server ทั้งหมด (API + Logic)
-backend/notes.json                   — ไฟล์เก็บโน็ตแบบ Local
-backend/.env                         — ค่าตั้งค่าต่าง ๆ
-backend/scripts/create-pocket-note.js — Script สร้างโน็ตผ่าน Command Line
-frontend/src/app/page.tsx            — หน้าเว็บทั้งหมด
-
-==================================================
-6. ค่าตั้งค่า (.env)
-==================================================
-PORT=3001
-SECRET_TOKEN=admin123
-POCKET_HOST_URL=https://app-tracking.pockethost.io/api/collections/notes/records
-POCKET_HOST_TOKEN=20260301eink
-POCKET_HOST_USER_ID=2
-
-frontend/.env.local:
-NEXT_PUBLIC_SECRET_TOKEN=admin123
-
-==================================================
-7. วิธีรันในเครื่อง
-==================================================
-# เปิด Backend
-cd backend
-npm install
-npm start
-→ เปิดที่ http://localhost:3001
-
-# เปิด Frontend
-cd frontend
-npm install
-npm run dev
-→ เปิดที่ http://localhost:3000
-
-# สร้างโน็ตผ่าน Command Line (ไปลง PocketHost)
-cd backend
-npm run create:pocket-note -- "ชื่อโน็ต" "เนื้อหา" 2
-
-==================================================
-8. ทดสอบแล้วผ่านทั้งหมด
-==================================================
-✓ ดูโน็ตจาก PocketHost ได้ 4 รายการ
-✓ สร้างโน็ตใน Local (notes.json) ได้
-✓ แก้ไข/ลบโน็ต PocketHost ด้วย String ID ได้
-✓ Script Command Line สร้างโน็ตใน PocketHost ได้
-✓ กดสลับ Local ↔ PocketHost แล้วโน็ตเปลี่ยนทันที
+ส่วนที่ 2: การตั้งค่า Frontend
+• เปิด Terminal หน้าต่างใหม่ และนำทางไปยังไดเรกทอรี: cd frontend
+• ติดตั้ง Dependency: npm install
+• สร้างไฟล์ .env.local และกำหนดค่าตัวแปร:
+    -- NEXT_PUBLIC_SECRET_TOKEN=admin123
+• เริ่มการทำงานของไคลเอนต์: npm run dev (ระบบจะรันบน http://localhost:3000)
 
 ขอบคุณครับ
 SecureNote เป็นแอปพลิเคชัน Full-stack สำหรับจัดการโน็ตส่วนตัว
@@ -136,7 +83,7 @@ Cloud DB : PocketHost REST API
 - ค่าที่เลือกบันทึกใน localStorage ของ Browser ด้วย
 
 --- PocketHost Auth ---
-- .env เก็บ POCKET_HOST_TOKEN=20260301eink (ไม่มี "Bearer " นำหน้า)
+- .env เก็บ POCKET_HOST_TOKEN=20260301eink
 - Backend มีฟังก์ชัน buildPocketHeaders() ที่ auto-prefix "Bearer " ให้อัตโนมัติ
 - ทุก Request ไป PocketHost จะส่ง Authorization: Bearer 20260301eink
 - GET /api/notes (public) ไม่ต้องใช้ Token ก็ได้ แต่ POST/PATCH/DELETE ต้องใช้
