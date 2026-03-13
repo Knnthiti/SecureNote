@@ -12,6 +12,9 @@ const fetch = global.fetch || require('node-fetch');
 // pocket host credentials (optional)
 let POCKET_HOST_URL = process.env.POCKET_HOST_URL || '';
 let POCKET_HOST_TOKEN = process.env.POCKET_HOST_TOKEN;
+const POCKET_HOST_USER_ID = process.env.POCKET_HOST_USER_ID
+  ? Number(process.env.POCKET_HOST_USER_ID)
+  : null;
 let usePocket = !!POCKET_HOST_URL;  // Use PocketHost if URL is configured
 let currentDataSource = POCKET_HOST_URL ? 'pocket' : 'local';
 
@@ -44,16 +47,22 @@ let notes = [];
 let nextId = 1;
 
 // PocketHost helpers (used when POCKET_HOST_TOKEN is set)
-async function pocketGetNotes() {
-  console.log('PocketHost GET:', POCKET_HOST_URL);
+function buildPocketHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (POCKET_HOST_TOKEN) {
-    headers.Authorization = POCKET_HOST_TOKEN;
+    // Accept both raw token and already-prefixed token.
+    headers.Authorization = POCKET_HOST_TOKEN.startsWith('Bearer ')
+      ? POCKET_HOST_TOKEN
+      : `Bearer ${POCKET_HOST_TOKEN}`;
   }
-  
+  return headers;
+}
+
+async function pocketGetNotes() {
+  console.log('PocketHost GET:', POCKET_HOST_URL);
   const res = await fetch(POCKET_HOST_URL, {
     method: 'GET',
-    headers,
+    headers: buildPocketHeaders(),
   });
   if (!res.ok) throw new Error(`PocketHost GET failed: ${res.status}`);
   const data = await res.json();
@@ -68,15 +77,15 @@ async function pocketGetNotes() {
   })) : [];
 }
 
-async function pocketCreateNote(title, content) {
+async function pocketCreateNote(title, content, userId) {
   console.log('PocketHost POST:', POCKET_HOST_URL);
+  const payload = { title, content };
+  if (Number.isInteger(userId)) payload.user_id = userId;
+
   const res = await fetch(POCKET_HOST_URL, {
     method: 'POST',
-    headers: {
-      Authorization: POCKET_HOST_TOKEN,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ title, content }),
+    headers: buildPocketHeaders(),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`PocketHost POST failed: ${res.status}`);
   return res.json();
@@ -87,10 +96,7 @@ async function pocketUpdateNote(id, title, content) {
   console.log('PocketHost PATCH:', url);
   const res = await fetch(url, {
     method: 'PATCH',
-    headers: {
-      Authorization: POCKET_HOST_TOKEN,
-      'Content-Type': 'application/json',
-    },
+    headers: buildPocketHeaders(),
     body: JSON.stringify({ title, content }),
   });
   if (!res.ok) throw new Error(`PocketHost PATCH failed: ${res.status}`);
@@ -102,10 +108,7 @@ async function pocketDeleteNote(id) {
   console.log('PocketHost DELETE:', url);
   const res = await fetch(url, {
     method: 'DELETE',
-    headers: { 
-      Authorization: POCKET_HOST_TOKEN,
-      'Content-Type': 'application/json',
-    },
+    headers: buildPocketHeaders(),
   });
   if (!res.ok) throw new Error(`PocketHost DELETE failed: ${res.status}`);
   return res.ok;
@@ -196,13 +199,14 @@ app.get('/api/notes', async (req, res) => {
 // POST /api/notes
 app.post('/api/notes', checkAuth, async (req, res) => {
   console.log('POST /api/notes body', req.body);
-  const { title, content } = req.body;
+  const { title, content, user_id } = req.body;
   if (!title || !content) {
     return res.status(400).json({ error: 'title and content required' });
   }
   if (usePocket) {
     try {
-      const obj = await pocketCreateNote(title, content);
+      const userId = Number.isInteger(user_id) ? user_id : POCKET_HOST_USER_ID;
+      const obj = await pocketCreateNote(title, content, userId);
       return res.status(201).json(obj);
     } catch (err) {
       console.error('PocketHost POST error', err);
@@ -218,7 +222,7 @@ app.post('/api/notes', checkAuth, async (req, res) => {
 
 // PATCH /api/notes/:id (update)
 app.patch('/api/notes/:id', checkAuth, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = req.params.id;
   const { title, content } = req.body;
   if (!title && !content) {
     return res.status(400).json({ error: 'title or content required' });
@@ -232,7 +236,8 @@ app.patch('/api/notes/:id', checkAuth, async (req, res) => {
       return res.status(500).json({ error: 'PocketHost update failed' });
     }
   }
-  const note = notes.find(n => n.id === id);
+  const numericId = parseInt(id, 10);
+  const note = notes.find(n => n.id === numericId);
   if (!note) {
     return res.status(404).json({ error: 'Note not found' });
   }
@@ -244,7 +249,7 @@ app.patch('/api/notes/:id', checkAuth, async (req, res) => {
 
 // DELETE /api/notes/:id
 app.delete('/api/notes/:id', checkAuth, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = req.params.id;
   if (usePocket) {
     try {
       const ok = await pocketDeleteNote(id);
@@ -255,7 +260,8 @@ app.delete('/api/notes/:id', checkAuth, async (req, res) => {
       return res.status(500).json({ error: 'PocketHost delete failed' });
     }
   }
-  const index = notes.findIndex(n => n.id === id);
+  const numericId = parseInt(id, 10);
+  const index = notes.findIndex(n => n.id === numericId);
   if (index === -1) {
     return res.status(404).json({ error: 'Note not found' });
   }

@@ -18,7 +18,6 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dataSource, setDataSource] = useState<"local" | "pocket">("local");
   const [pocketToken, setPocketToken] = useState("");
-  const [showSettings, setShowSettings] = useState(false);
 
   // token value can now be entered by user
   const [tokenInput, setTokenInput] = useState("");
@@ -58,16 +57,12 @@ export default function Home() {
     fetchNotes();
   }, []);
 
-  // Auto-refresh when dataSource changes from Settings
-  useEffect(() => {
-    if (showSettings === false) {
-      fetchNotes();
-    }
-  }, [showSettings]);
-
-  const handleSaveConfig = async () => {
-    localStorage.setItem("dataSource", dataSource);
-    localStorage.setItem("pocketToken", pocketToken);
+  const handleSaveConfig = async (
+    nextDataSource: "local" | "pocket" = dataSource,
+    nextPocketToken: string = pocketToken
+  ) => {
+    localStorage.setItem("dataSource", nextDataSource);
+    localStorage.setItem("pocketToken", nextPocketToken);
     
     // Send config to backend
     try {
@@ -75,8 +70,8 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          dataSource,
-          pocketToken: dataSource === "pocket" ? pocketToken : null 
+          dataSource: nextDataSource,
+          pocketToken: nextDataSource === "pocket" ? nextPocketToken : null 
         }),
       });
       if (res.ok) {
@@ -88,8 +83,6 @@ export default function Home() {
     } catch (e) {
       setError("Failed to save config");
     }
-    
-    setShowSettings(false);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -157,17 +150,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header with Title & Token Input */}
-      <div className="bg-white shadow-sm rounded-xl m-6 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">📖</span>
-            <h1 className="text-3xl font-bold text-gray-800">SecureNote</h1>
+      {/* Header */}
+      <div className="bg-white shadow-sm rounded-xl m-6 p-6">
+        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">📖</span>
+              <h1 className="text-3xl font-bold text-gray-800">SecureNote</h1>
+            </div>
+            <p className="text-gray-600 text-sm mt-2">🔑 Secure your notes with authentication</p>
           </div>
-          <p className="text-gray-600 text-sm mt-2">🔑 Secure your notes with authentication</p>
-        </div>
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-          <div className="w-full md:w-64">
+
+          {/* Authorization Token moved to top-right */}
+          <div className="w-full xl:w-80 xl:self-start">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Authorization Token
             </label>
@@ -179,32 +174,27 @@ export default function Home() {
               placeholder={process.env.NEXT_PUBLIC_SECRET_TOKEN ? "(using env value)" : "enter token"}
             />
           </div>
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
-            title="Settings"
-          >
-            ⚙️ Settings
-          </button>
         </div>
-      </div>
 
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="mx-6 mb-6 bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Data Source Settings</h3>
-          <div className="space-y-4">
+        {/* Data Source Settings */}
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Data Source Settings</h3>
+          <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Choose Data Source
               </label>
-              <div className="flex gap-4">
+              <div className="flex flex-col md:flex-row gap-3 md:gap-4">
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
                     value="local"
                     checked={dataSource === "local"}
-                    onChange={(e) => setDataSource(e.target.value as "local")}
+                    onChange={(e) => {
+                      const nextSource = e.target.value as "local";
+                      setDataSource(nextSource);
+                      handleSaveConfig(nextSource, pocketToken);
+                    }}
                   />
                   <span>Local Storage (notes.json)</span>
                 </label>
@@ -213,7 +203,11 @@ export default function Home() {
                     type="radio"
                     value="pocket"
                     checked={dataSource === "pocket"}
-                    onChange={(e) => setDataSource(e.target.value as "pocket")}
+                    onChange={(e) => {
+                      const nextSource = e.target.value as "pocket";
+                      setDataSource(nextSource);
+                      handleSaveConfig(nextSource, pocketToken);
+                    }}
                   />
                   <span>PocketHost API</span>
                 </label>
@@ -230,6 +224,7 @@ export default function Home() {
                   placeholder="Enter your PocketHost API token"
                   value={pocketToken}
                   onChange={(e) => setPocketToken(e.target.value)}
+                  onBlur={() => handleSaveConfig("pocket", pocketToken)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-gray-600 mt-2">
@@ -237,24 +232,9 @@ export default function Home() {
                 </p>
               </div>
             )}
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleSaveConfig}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                Save Configuration
-              </button>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
-              >
-                Cancel
-              </button>
-            </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Error Alert */}
       {error && (
