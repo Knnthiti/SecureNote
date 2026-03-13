@@ -1,0 +1,55 @@
+การส่ง Assignment: แอปพลิเคชัน SecureNote
+รหัสนักศึกษา: 66011390
+
+ขออนุญาตส่ง Assignment โปรเจกต์ SecureNote Application ครับ
+ระบบพัฒนาตาม Full-stack Architecture ที่กำหนด และรองรับการจัดเก็บข้อมูลแบบผสม (Local File + PocketHost API) เรียบร้อยแล้ว
+
+1) ที่เก็บซอร์สโค้ด
+GitHub: https://github.com/Knnthiti/SecureNote
+
+2) เทคโนโลยีที่ใช้
+- ฝั่งหน้าบ้าน (Frontend): Next.js (App Router) + React + Tailwind CSS
+- ฝั่งหลังบ้าน (Backend): Node.js + Express
+- แหล่งข้อมูล:
+  - โหมดโลคัล: notes.json (โมดูล fs)
+  - โหมด PocketHost: https://app-tracking.pockethost.io/api/collections/notes/records
+
+3) ฟีเจอร์ที่พัฒนา
+- ตรวจสอบ Authorization Token
+- จัดการโน็ต: สร้าง / อ่าน / แก้ไข / ลบ (CRUD)
+- ค้นหาโน็ต (ตามชื่อเรื่อง/เนื้อหา)
+- สลับแหล่งข้อมูล: Local Storage / PocketHost API
+- Backend รองรับรูปแบบ Bearer Authorization สำหรับ PocketHost
+- Backend รองรับการส่ง user_id อัตโนมัติตาม Schema ของ PocketHost
+
+4) วิธีรันในเครื่อง
+ฝั่งหลังบ้าน (Backend)
+- cd backend
+- npm install
+- ตั้งค่าตัวแปรใน .env:
+  PORT=3001
+  SECRET_TOKEN=admin123
+  POCKET_HOST_URL=https://app-tracking.pockethost.io/api/collections/notes/records
+  POCKET_HOST_TOKEN=Bearer 20260301eink
+  POCKET_HOST_USER_ID=2
+- npm start
+
+ฝั่งหน้าบ้าน (Frontend)
+- cd frontend
+- npm install
+- ตั้งค่าตัวแปรใน .env.local:
+  NEXT_PUBLIC_SECRET_TOKEN=admin123
+- npm run dev
+
+5) หมายเหตุการทดสอบ
+- ทดสอบ Backend API (GET /api/notes) ดึงโน็ตจาก PocketHost สำเร็จ
+- มีสคริปต์สำหรับสร้างโน็ตใน PocketHost:
+  backend/scripts/create-pocket-note.js
+- คำสั่ง npm:
+  npm run create:pocket-note -- "Assignment Test" "สร้างผ่าน node script" 2
+
+6) หมายเหตุเกี่ยวกับการ Deploy บนคลาวด์
+- Backend แบบ Free tier อาจมีความล่าช้าในการเริ่มต้น (Cold Start)
+- การจัดเก็บไฟล์โลคัลบน Free tier อาจถูกลบเมื่อ Restart
+
+ขอบคุณครับ
