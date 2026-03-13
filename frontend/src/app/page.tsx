@@ -22,6 +22,7 @@ export default function Home() {
   // token value can now be entered by user
   const [tokenInput, setTokenInput] = useState("");
   const envToken = process.env.NEXT_PUBLIC_SECRET_TOKEN || "";
+  const pocketEnvToken = process.env.NEXT_PUBLIC_POCKET_TOKEN || "";
   const hasInput = tokenInput.trim() !== "";
   // token to send will be user input if provided, otherwise fallback to env
   const SECRET_TOKEN = hasInput ? tokenInput : envToken;
@@ -29,8 +30,9 @@ export default function Home() {
 
   // require user to actually type something before enabling actions
   const isAuthorized = hasInput && !!SECRET_TOKEN;
-  // if an env value exists, we can validate the input locally
-  const tokenValid = hasInput ? (envToken ? tokenInput === envToken : true) : false;
+  // validate against appropriate token based on current data source mode
+  const expectedToken = dataSource === "pocket" ? pocketEnvToken : envToken;
+  const tokenValid = hasInput ? (expectedToken ? tokenInput === expectedToken : true) : false;
 
   const fetchNotes = async () => {
     setLoading(true);
@@ -171,8 +173,13 @@ export default function Home() {
               type="password"
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
-              placeholder={process.env.NEXT_PUBLIC_SECRET_TOKEN ? "(using env value)" : "enter token"}
+              placeholder="enter token"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              {dataSource === "pocket"
+                ? "💡 PocketHost Mode: ใช้ Token 20260301eink"
+                : "💡 Local Mode: ใช้ Token admin123"}
+            </p>
           </div>
         </div>
 

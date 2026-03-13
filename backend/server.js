@@ -145,9 +145,13 @@ function saveNotes() {
 loadNotes();
 
 // Authentication middleware for POST/DELETE
+// Accepts both LOCAL SECRET_TOKEN (admin123) and POCKET_HOST_TOKEN (for PocketHost mode)
 function checkAuth(req, res, next) {
   const token = req.header('Authorization');
-  if (token !== SECRET) {
+  const pocketRaw = POCKET_HOST_TOKEN
+    ? POCKET_HOST_TOKEN.replace(/^Bearer\s+/i, '')
+    : null;
+  if (token !== SECRET && token !== pocketRaw) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
